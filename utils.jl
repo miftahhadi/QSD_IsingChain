@@ -135,14 +135,14 @@ function prepare(J, L, Lsub, dt)
 end
 
 function isComputeS(step, dt)
-    # How many steps to make it 1.0 second?
-    ref_step = Int(round(1.0 / dt))
+    # How many steps to make it 2.5 second?
+    ref_step = Int(round(2.5 / dt))
 
     # What is the current time?
     current_time = (step-1) * dt
 
     res = true
-    if current_time > 1.0 && step % ref_step != 0
+    if current_time > 2.5 && step % ref_step != 0
         res = false
     end
     return res
