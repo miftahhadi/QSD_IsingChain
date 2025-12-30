@@ -134,16 +134,33 @@ function prepare(J, L, Lsub, dt)
 
 end
 
-function isComputeS(step, dt)
-    # How many steps to make it 2.5 second?
-    ref_step = Int(round(2.5 / dt))
+function isComputeS(step, dt, threshold=2.5)
+    # How many steps to make it 1.0 second?
+    ref_step = Int(round(1.0 / dt))
 
     # What is the current time?
     current_time = (step-1) * dt
 
     res = true
-    if current_time > 2.5 && step % ref_step != 0
+    if current_time > threshold && step % ref_step != 0
         res = false
     end
+    return res
+end
+
+function getResultArraySize(nsteps, dt, threshold)
+    # How many steps to make it to the threshold time?
+    ref_step = Int(round(threshold / dt))
+
+    # How many steps to make it 1.0 second?
+    step_one_sec = Int(round(1.0 / dt))
+
+    res = ref_step
+    if nsteps > ref_step
+        # Additional steps after threshold
+        additional_steps = div(nsteps - ref_step, step_one_sec)
+        res += additional_steps
+    end
+
     return res
 end

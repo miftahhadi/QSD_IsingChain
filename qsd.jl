@@ -19,14 +19,18 @@ function runQSD(
 )
     # Prepares the parameters
     nsteps = round(Int, t_max / dt)
+    # We will compute S_ent at each step up to this threshold
+    threshold_t = 2.5 # in seconds
+    # Size of the result containers 
+    res_size = getResultArraySize(nsteps, dt, threshold_t)
 
     # Prepare G0 and U0
     G = GInit(L)
     U = buildU0(L)
 
     # Preallocate containers. 
-    times = zeros(Float64, nsteps+1)
-    entropy_arr = zeros(Float64, nsteps+1)
+    times = zeros(Float64, res_size+1)
+    entropy_arr = zeros(Float64, res_size+1)
     dξ = zeros(Float64, L)
     n_i = zeros(Float64, L)
 
