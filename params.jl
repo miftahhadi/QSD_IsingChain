@@ -1,5 +1,5 @@
 # Parameters
-t_max = 200.0
+t_max = 600.0
 J = 1.0
 dt = 0.01
 

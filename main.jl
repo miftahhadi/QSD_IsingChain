@@ -8,11 +8,15 @@ using SlurmClusterManager
 #  SLURM-AWARE DISTRIBUTED SETUP
 # ===========================================
 
-if haskey(ENV, "SLURM_JOB_ID")
+if haskey(ENV, "SLURM_JOB_ID") 
     try
         n = parse(Int, ENV["SLURM_NTASKS"])
-        addprocs(SlurmManager())
-        @info "Running under SLURM: added $(nworkers()) workers"
+        if n > 1
+            addprocs(SlurmManager())
+            @info "Running under SLURM: added $(nworkers()) workers. SLURM_NTASKS=$n"            
+        else
+            @info "Running under SLURM with 1 task. Using threads only."
+        end
     catch e
         @warn "Could not add SLURM workers: $e"
     end
@@ -62,7 +66,6 @@ else
 end
 
 # Set log file and save file paths
-logfile = joinpath(outdir, "log_" * replace(filename, ".jld2" => ".txt"))
 savefile = joinpath(outdir, filename)
 
 println("Start time: " * Dates.format(time_start, "yyyy-mm-dd HH:MM:SS"))
@@ -153,4 +156,3 @@ elapsed_time = Dates.value(time_end - time_start) / 1000  # in seconds
 
 println("End time: " * Dates.format(time_end, "yyyy-mm-dd HH:MM:SS"))
 println("Execution time: $(elapsed_time/60) minutes ($(elapsed_time/3600) hours)")
-println("Log saved to " * logfile)

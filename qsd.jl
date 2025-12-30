@@ -20,15 +20,13 @@ function runQSD(
     # Prepares the parameters
     nsteps = round(Int, t_max / dt)
 
-    start_step = 1
-
     # Prepare G0 and U0
     G = GInit(L)
     U = buildU0(L)
 
     # Preallocate containers. 
-    times = zeros(Float64, nsteps)
-    entropies_arr = zeros(Float64, nsteps)
+    times = zeros(Float64, nsteps+1)
+    entropy_arr = zeros(Float64, nsteps+1)
     dξ = zeros(Float64, L)
     n_i = zeros(Float64, L)
 
@@ -40,10 +38,19 @@ function runQSD(
     exp_dTplus = zeros(Float64, L)
     exp_dTminus = zeros(Float64, L)
 
+    # Compute entanglement entropy at t=0
+    # Of course, should be zero
+    S_ent = getEntanglementEntropy(G, idty2L, VMaj, majorana_indices)
+
+    # Store the results
+    times[1] = 0
+    entropy_arr[1] = S_ent
+
     # Let's start the time evolution
-    for step in start_step:nsteps 
+    start_step = 2
+    for step in start_step:(nsteps+1)
         # What is current time?
-        current_time = step * dt
+        current_time = (step-1) * dt
         # Do we compute the entanglement entropy at this step?
         compute_Sent = isComputeS(step, dt)
 
@@ -76,14 +83,14 @@ function runQSD(
         mul!(temp1, exp_H, U) # temp1 = exp_H * U
 
         @inbounds for j in 1:L 
-            @views temp2[j, :] .= exp_dTminus .* temp1[j, :]
-            @views temp2[L + j, :] .= exp_dTplus .* temp1[L + j, :]
+            @views temp2[j, :]      .= exp_dTminus[j] * temp1[j, :]
+            @views temp2[L + j, :]  .= exp_dTplus[j] * temp1[L + j, :]
         end
 
         Utilde = temp2
 
         # QR decomposition
-        Q, R = qr(U_tilde)
+        Q, R = qr(Utilde)
         U .= Matrix(Q)
 
         # Compute new G for current time 
@@ -102,22 +109,20 @@ function runQSD(
 
             # Store the results
             times[step] = current_time
-            entropies_arr[step] = S_ent
+            entropy_arr[step] = S_ent
 
             if itraj !== nothing
                 println("Trajectory #$(itraj)")                
             end
             println("Time: $(current_time) / $(t_max)\nS_ent = $(S_ent)\n")
         end
-    
-        if itraj !==nothing
-            println("Trajectory #$(itraj) completed at $(Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))")
-        end
-
-        return times, entropy_arr    
-        
     end
 
+    if itraj !==nothing
+        println("Trajectory #$(itraj) completed at $(Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))")
+    end
+    
+    return times, entropy_arr    
 
 end
 
@@ -138,8 +143,8 @@ function runQSDEnsembleParallel(
     nsteps = round(Int, t_max / dt)
 
     # Containers
-    S_trajs = zeros(Float64, nsteps, ntraj)
-    times = collect(1:nsteps) .* dt
+    S_trajs = zeros(Float64, nsteps+1, ntraj)
+    times = collect(0:nsteps) .* dt
 
     @threads for j in 1:ntraj 
         seed = base_seed + j
@@ -179,7 +184,7 @@ function single_traj(
         return S
     catch e 
         @warn "Trajectory #$(j) failed on worker $(myid()) with error: $e"
-        return fill(NaN, round(Int, t_max / dt))
+        return fill(NaN, round(Int, t_max / dt)+1)
     end
 end
 
@@ -197,7 +202,7 @@ function runQSDEnsembleDistributed(
     base_seed::Int=1234
 )
     nsteps = round(Int, t_max / dt)
-    times = collect(1:nsteps) .* dt
+    times = collect(0:nsteps) .* dt
 
     # Run each trajectory on a different worker
     S_list = pmap(j -> single_traj(
@@ -205,7 +210,7 @@ function runQSDEnsembleDistributed(
         ), 1:ntraj)
 
     # Collect into an array (each column = one trajectory)
-    S_trajs = hcat(S_list...)  # size: (nsteps, ntraj)
+    S_trajs = hcat(S_list...)  # size: (nsteps+1, ntraj)
     mean_S = mean(S_trajs, dims=2)[:]
     std_S = std(S_trajs, dims=2)[:]
 

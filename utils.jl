@@ -50,6 +50,16 @@ function VMajorana(L)
     return vcat(top, bot)
 end
 
+function getWTilde(G, idty2L, VMaj)
+    # Get the Majorana correlation matrix M
+    M = VMaj * G * VMaj'
+
+    # Use M = (I + i Wtilde) --> Wtilde = -i(M - I)
+    Wtilde = 1im * (idty2L - M)
+    
+    return Wtilde
+end
+
 function getMajoranaIndices(L, Lsub::Int64)
     # Majorana indices for sites 1..Lsub 
     # There are 2 Majorana modes per site
@@ -120,7 +130,7 @@ function prepare(J, L, Lsub, dt)
 
     idty2L = Matrix{ComplexF64}(I, 2*L, 2*L)
 
-    return exp_H, diag_block, maj_indices, VMaj, idty2L
+    return exp_H, diag_block, VMaj, idty2L, maj_indices
 
 end
 
@@ -129,7 +139,7 @@ function isComputeS(step, dt)
     ref_step = Int(round(1.0 / dt))
 
     # What is the current time?
-    current_time = step * dt
+    current_time = (step-1) * dt
 
     res = true
     if current_time > 1.0 && step % ref_step != 0
